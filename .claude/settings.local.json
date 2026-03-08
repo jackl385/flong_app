@@ -9,7 +9,12 @@
       "Bash(git init)",
       "Bash(git remote add origin https://github.com/jackl385/flong_app.git)",
       "Bash(git add flong-dashboard.html CLAUDE.md README.md data/ history/ .claude/)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(git branch -M main)",
+      "Bash(git push -u origin main)",
+      "Bash(ssh -T git@github.com)",
+      "Bash(brew install gh)",
+      "Bash(gh auth login --hostname github.com --web --git-protocol https)"
     ]
   }
 }
