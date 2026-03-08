@@ -4,6 +4,8 @@ A single-file HTML dashboard for tracking **D401 Flong**.
 
 No build step, no server — open `flong-dashboard.html` in a browser and go.
 
+### [**Open Dashboard**](https://jackl385.github.io/flong_app/flong-dashboard.html)
+
 ---
 
 ## For Players (Using the App)
