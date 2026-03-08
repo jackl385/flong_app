@@ -1,6 +1,6 @@
 # D401 Flong Scoreboard
 
-A single-file HTML dashboard for tracking **D401 Flong**, a beer pong / flip cup hybrid drinking game played by 6 friends at MIT.
+A single-file HTML dashboard for tracking **D401 Flong**.
 
 No build step, no server — open `flong-dashboard.html` in a browser and go.
 
