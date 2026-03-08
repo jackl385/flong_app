@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>D401 Flong</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #0a0a0f; font-family: 'Courier New', monospace; color: #ccc; }
+::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: #111; } ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+.tab { padding: 10px 22px; border-radius: 8px; cursor: pointer; font-family: inherit; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; border: 1px solid #222; background: #111; color: #555; transition: all .15s; }
+.tab.on { border-color: #00f5ff55; background: #00f5ff11; color: #00f5ff; }
+.tab:hover:not(.on) { color: #888; border-color: #333; }
+.ibtn { padding: 7px 14px; border-radius: 8px; cursor: pointer; font-family: inherit; font-size: 11px; letter-spacing: 1px; border: 1px solid #2a2a2a; background: #111; color: #666; transition: all .15s; }
+.ibtn:hover { color: #aaa; border-color: #444; }
+.sbtn { padding: 5px 10px; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 11px; transition: all .12s; }
+.lbg { display: grid; grid-template-columns: 34px 1fr 64px 68px 60px 68px 76px 76px; align-items: center; }
+.lbr { padding: 13px 16px; border-bottom: 1px solid #13131f; transition: background .1s; }
+.lbr:hover { background: #ffffff05; }
+.lbr:last-child { border-bottom: none; }
+.toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #1a2a1a; border: 1px solid #2a5a2a; color: #4caf50; padding: 10px 20px; border-radius: 8px; font-size: 12px; z-index: 999; pointer-events: none; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useMemo, useEffect, useRef } = React;
+const CA="#00f5ff", CB="#ff2d78", GOLD="#ffd700", NAK="#ff6b35";
+const PIDS=["p1","p2","p3","p4","p5","p6"];
+const KEY="d401_flong_v4";
+
+const SEED = {
+  players:{p1:"David",p2:"Jack",p3:"Jordan",p4:"Karthik",p5:"Richard",p6:"Yishak"},
+  games:[
+    {id:1741000001,teamA:["p1","p2"],teamB:["p3","p4"],cups:{p1:5,p2:5,p3:4,p4:5,p5:0,p6:0},puskas:{p1:false,p2:false,p3:false,p4:false,p5:false,p6:false},nakedLap:{p1:false,p2:false,p3:false,p4:false,p5:false,p6:false},winner:"A"},
+    {id:1741000002,teamA:["p1","p2"],teamB:["p5","p6"],cups:{p1:5,p2:5,p3:0,p4:0,p5:3,p6:4},puskas:{p1:false,p2:false,p3:false,p4:false,p5:false,p6:false},nakedLap:{p1:false,p2:false,p3:false,p4:false,p5:false,p6:false},winner:"A"},
+    {id:1741000003,teamA:["p5","p6"],teamB:["p3","p4"],cups:{p1:0,p2:0,p3:3,p4:4,p5:5,p6:5},puskas:{p1:false,p2:false,p3:false,p4:false,p5:false,p6:false},nakedLap:{p1:false,p2:false,p3:false,p4:false,p5:false,p6:false},winner:"A"},
+    {id:1741000004,teamA:["p1","p5"],teamB:["p2","p6"],cups:{p1:5,p2:5,p3:0,p4:0,p5:5,p6:4},puskas:{p1:false,p2:false,p3:false,p4:false,p5:false,p6:false},nakedLap:{p1:false,p2:false,p3:false,p4:false,p5:false,p6:false},winner:"A"},
+    {id:1741000005,teamA:["p5","p4"],teamB:["p3","p2"],cups:{p1:0,p2:2,p3:4,p4:5,p5:5,p6:0},puskas:{p1:false,p2:false,p3:false,p4:false,p5:false,p6:false},nakedLap:{p1:false,p2:false,p3:false,p4:false,p5:false,p6:false},winner:"A"}
+  ]
+};
+
+function load() { try { const r=localStorage.getItem(KEY); if(r){const d=JSON.parse(r); if(d.games&&d.games.length>=SEED.games.length) return d;} } catch(e){} return SEED; }
+
+function rate(w,l) {
+  const t=w+l; if(!t) return {label:"Fresh",emoji:"🍺",color:"#aaa"};
+  const p=w/t;
+  if(p>=.75) return {label:"DOMINATING",emoji:"👑",color:GOLD};
+  if(p>=.6)  return {label:"Cooking",emoji:"🔥",color:"#ff8c00"};
+  if(p>=.4)  return {label:"Even",emoji:"⚖️",color:"#aaa"};
+  if(p>=.25) return {label:"Struggling",emoji:"😬",color:"#ff9944"};
+  return {label:"COOKED",emoji:"💀",color:CB};
+}
+
+function winner(cups,tA,tB) {
+  const sA=tA.reduce((s,p)=>s+(+cups[p]||0),0), sB=tB.reduce((s,p)=>s+(+cups[p]||0),0);
+  if(sA>=10) return "A"; if(sB>=10) return "B"; return sA>=sB?"A":"B";
+}
+
+function suggest(games, players) {
+  // build history maps
+  const paired={}, faced={}, playCount={}, recentCount={};
+  PIDS.forEach(p=>{paired[p]={};faced[p]={};playCount[p]=0;recentCount[p]=0;});
+  const last3=games.slice(-3);
+  games.forEach(g=>{
+    [...g.teamA,...g.teamB].forEach(p=>playCount[p]++);
+    [[...g.teamA],[...g.teamB]].forEach(t=>{if(t.length===2){paired[t[0]][t[1]]=(paired[t[0]][t[1]]||0)+1;paired[t[1]][t[0]]=(paired[t[1]][t[0]]||0)+1;}});
+    g.teamA.forEach(a=>g.teamB.forEach(b=>{faced[a][b]=(faced[a][b]||0)+1;faced[b][a]=(faced[b][a]||0)+1;}));
+  });
+  last3.forEach(g=>[...g.teamA,...g.teamB].forEach(p=>recentCount[p]++));
+
+  let best=null, bestScore=Infinity;
+  for(let i=0;i<6;i++) for(let j=i+1;j<6;j++) for(let k=0;k<6;k++) for(let l=k+1;l<6;l++) {
+    const a1=PIDS[i],a2=PIDS[j],b1=PIDS[k],b2=PIDS[l];
+    if(new Set([a1,a2,b1,b2]).size!==4) continue;
+    let s=0;
+    s+=(paired[a1][a2]||0)*30;
+    s+=(paired[b1][b2]||0)*30;
+    [a1,a2].forEach(a=>[b1,b2].forEach(b=>s+=(faced[a][b]||0)*10));
+    [a1,a2,b1,b2].forEach(p=>s+=recentCount[p]*8+playCount[p]*2);
+    const sit=PIDS.filter(p=>![a1,a2,b1,b2].includes(p));
+    const maxP=Math.max(...Object.values(playCount));
+    sit.forEach(p=>s-=(maxP-playCount[p])*3);
+    if(s<bestScore){bestScore=s;best={teamA:[a1,a2],teamB:[b1,b2],sitting:sit};}
+  }
+  return best;
+}
+
+const DEF_FORM=()=>({teamA:["p1","p2"],teamB:["p3","p4"],sitting:["p5","p6"],cups:{p1:"",p2:"",p3:"",p4:"",p5:"",p6:""},puskas:{p1:false,p2:false,p3:false,p4:false,p5:false,p6:false}});
+
+function App() {
+  const init=useMemo(()=>load(),[]);
+  const [players,setPlayers]=useState(init.players);
+  const [games,setGames]=useState(init.games);
+  const [tab,setTab]=useState("lb");
+  const [sort,setSort]=useState("winpct");
+  const [form,setForm]=useState(DEF_FORM());
+  const [editing,setEditing]=useState(false);
+  const [editN,setEditN]=useState({...init.players});
+  const [toast,setToast]=useState(null);
+  const [confirmClear,setConfirmClear]=useState(false);
+  const impRef=useRef();
+
+  useEffect(()=>{try{localStorage.setItem(KEY,JSON.stringify({players,games}));}catch(e){}},[players,games]);
+  const msg=m=>{setToast(m);setTimeout(()=>setToast(null),2500);};
+
+  const suggestion=useMemo(()=>suggest(games,players),[games,players]);
+
+  const cycle=pid=>setForm(f=>{
+    const inA=f.teamA.includes(pid),inB=f.teamB.includes(pid);
+    if(inA){
+      if(f.teamB.length<2) return {...f,teamA:f.teamA.filter(p=>p!==pid),teamB:[...f.teamB,pid]};
+      return {...f,teamA:f.teamA.filter(p=>p!==pid),sitting:[...f.sitting,pid]};
+    } else if(inB) {
+      return {...f,teamB:f.teamB.filter(p=>p!==pid),sitting:[...f.sitting,pid]};
+    } else {
+      if(f.teamA.length<2) return {...f,sitting:f.sitting.filter(p=>p!==pid),teamA:[...f.teamA,pid]};
+      if(f.teamB.length<2) return {...f,sitting:f.sitting.filter(p=>p!==pid),teamB:[...f.teamB,pid]};
+      return f;
+    }
+  });
+
+  const addGame=()=>{
+    const cups={}; PIDS.forEach(p=>cups[p]=+form.cups[p]||0);
+    const w=winner(cups,form.teamA,form.teamB);
+    const losers=w==="A"?form.teamB:form.teamA;
+    const nl={}; PIDS.forEach(p=>nl[p]=losers.includes(p)&&cups[p]===0);
+    setGames(g=>[...g,{id:Date.now(),teamA:[...form.teamA],teamB:[...form.teamB],cups,puskas:{...form.puskas},nakedLap:nl,winner:w}]);
+    setForm(DEF_FORM()); setTab("lb"); msg("✓ Game saved");
+  };
+
+  const pstat=pid=>{
+    const mg=games.filter(g=>g.teamA.includes(pid)||g.teamB.includes(pid));
+    const w=mg.filter(g=>(g.teamA.includes(pid)&&g.winner==="A")||(g.teamB.includes(pid)&&g.winner==="B")).length;
+    const l=mg.length-w, cups=mg.reduce((s,g)=>s+g.cups[pid],0);
+    const mx=mg.length*5;
+    return {w,l,cups,cupPct:mx>0?Math.round(cups/mx*100):null,naked:games.filter(g=>g.nakedLap[pid]).length,puskas:games.filter(g=>g.puskas[pid]).length,avg:mg.length?(cups/mg.length).toFixed(1):null,winPct:mg.length?Math.round(w/mg.length*100):null,gp:mg.length};
+  };
+
+  const lb=useMemo(()=>PIDS.map(pid=>({pid,name:players[pid],...pstat(pid)})).sort((a,b)=>{
+    if(sort==="winpct") return (b.winPct??-1)-(a.winPct??-1);
+    if(sort==="cups")   return b.cups-a.cups;
+    if(sort==="cupPct") return (b.cupPct??-1)-(a.cupPct??-1);
+    if(sort==="puskas") return b.puskas-a.puskas;
+    if(sort==="naked")  return a.naked-b.naked;
+    return 0;
+  }),[games,players,sort]);
+
+  const exp=()=>{
+    const b=new Blob([JSON.stringify({players,games},null,2)],{type:"application/json"});
+    const u=URL.createObjectURL(b),a=document.createElement("a");
+    a.href=u;a.download=`flong-${new Date().toISOString().slice(0,10)}.json`;a.click();URL.revokeObjectURL(u);msg("✓ Exported");
+  };
+  const imp=e=>{
+    const f=e.target.files[0];if(!f)return;
+    const r=new FileReader();
+    r.onload=ev=>{try{const d=JSON.parse(ev.target.result);if(d.players&&d.games){setPlayers(d.players);setGames(d.games);msg(`✓ Imported ${d.games.length} games`);}else msg("✗ Invalid");}catch{msg("✗ Error");}};
+    r.readAsText(f);e.target.value="";
+  };
+  const clr=()=>{
+    if(!confirmClear){setConfirmClear(true);setTimeout(()=>setConfirmClear(false),3000);return;}
+    setGames(SEED.games);setPlayers(SEED.players);setConfirmClear(false);msg("✓ Reset");
+  };
+
+  const pvc=cups=>({sumA:form.teamA.reduce((s,p)=>s+(+cups[p]||0),0),sumB:form.teamB.reduce((s,p)=>s+(+cups[p]||0),0)});
+  const {sumA,sumB}=pvc(form.cups);
+  const prev10=sumA>=10?"A":sumB>=10?"B":null;
+
+  const S=({k,l})=><button className="sbtn" onClick={()=>setSort(k)} style={{border:`1px solid ${sort===k?"#00f5ff55":"#222"}`,background:sort===k?"#00f5ff11":"#111",color:sort===k?"#00f5ff":"#555"}}>{l}</button>;
+
+  const tl=pid=>form.teamA.includes(pid)?{l:"A",c:CA}:form.teamB.includes(pid)?{l:"B",c:CB}:{l:"–",c:"#444"};
+
+  return (
+    <div style={{minHeight:"100vh",padding:"20px 16px 60px",backgroundImage:`radial-gradient(ellipse at 20% 20%,${CA}08 0%,transparent 60%),radial-gradient(ellipse at 80% 80%,${CB}08 0%,transparent 60%)`}}>
+
+      {/* HEADER */}
+      <div style={{textAlign:"center",marginBottom:20}}>
+        <div style={{fontSize:10,letterSpacing:6,color:"#555",textTransform:"uppercase",marginBottom:2}}>D401</div>
+        <div style={{fontSize:44,fontWeight:900,background:`linear-gradient(90deg,${CA},#fff,${CB})`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>FLONG</div>
+        <div style={{fontSize:10,letterSpacing:4,color:"#444",textTransform:"uppercase"}}>SCOREBOARD</div>
+        <div style={{marginTop:5,fontSize:9,color:"#252525",letterSpacing:2}}>● AUTO-SAVING · {games.length} GAMES LOGGED</div>
+      </div>
+
+      {/* SUGGESTED MATCHUP */}
+      {suggestion&&(
+        <div style={{border:`1px solid ${GOLD}33`,borderRadius:12,padding:"14px 18px",marginBottom:20,background:`${GOLD}07`}}>
+          <div style={{fontSize:9,color:GOLD,letterSpacing:3,marginBottom:10,textTransform:"uppercase"}}>⚡ Suggested Next Matchup</div>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:12}}>
+            <div>
+              <div style={{fontSize:17,fontWeight:700,marginBottom:6}}>
+                <span style={{color:CA}}>{suggestion.teamA.map(p=>players[p]).join(" + ")}</span>
+                <span style={{color:"#444",margin:"0 12px",fontSize:14}}>vs</span>
+                <span style={{color:CB}}>{suggestion.teamB.map(p=>players[p]).join(" + ")}</span>
+              </div>
+              <div style={{fontSize:12,color:"#555"}}>sitting out: <span style={{color:"#777"}}>{suggestion.sitting.map(p=>players[p]).join(", ")}</span></div>
+            </div>
+            <button onClick={()=>{setForm({...DEF_FORM(),teamA:suggestion.teamA,teamB:suggestion.teamB,sitting:suggestion.sitting});setTab("log");}}
+              style={{padding:"9px 20px",borderRadius:8,cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,letterSpacing:1,border:`1px solid ${GOLD}55`,background:`${GOLD}18`,color:GOLD}}>
+              USE THIS →
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* CONTROLS */}
+      <div style={{display:"flex",gap:8,marginBottom:20,flexWrap:"wrap",justifyContent:"center"}}>
+        <button className="ibtn" onClick={exp}>⬇ EXPORT</button>
+        <button className="ibtn" onClick={()=>impRef.current.click()}>⬆ IMPORT</button>
+        <input ref={impRef} type="file" accept=".json" style={{display:"none"}} onChange={imp}/>
+        <button className="ibtn" onClick={clr} style={{color:confirmClear?"#ff4444":"#444",borderColor:confirmClear?"#ff444455":"#2a2a2a"}}>
+          {confirmClear?"⚠ CONFIRM?":"✕ CLEAR"}
+        </button>
+      </div>
+
+      {/* TABS */}
+      <div style={{display:"flex",gap:8,marginBottom:20,flexWrap:"wrap"}}>
+        {[["lb","🏆 Leaderboard"],["log","➕ Log Game"],["hist","📋 History"],["music","🎵 Playlist"]].map(([k,l])=>(
+          <button key={k} className={`tab${tab===k?" on":""}`} onClick={()=>setTab(k)}>{l}</button>
+        ))}
+      </div>
+
+      {/* ── LEADERBOARD ── */}
+      {tab==="lb"&&(
+        <div style={{border:"1px solid #1a1a2e",borderRadius:12,background:"#0d0d18",overflow:"hidden"}}>
+          <div style={{padding:"14px 18px 12px",borderBottom:"1px solid #1a1a2e",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10}}>
+            <div style={{fontSize:11,letterSpacing:3,color:"#555",textTransform:"uppercase"}}>Individual Leaderboard</div>
+            <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
+              <span style={{fontSize:10,color:"#333"}}>SORT:</span>
+              <S k="winpct" l="WIN%"/> <S k="cups" l="CUPS"/> <S k="cupPct" l="CUP%"/> <S k="puskas" l="⚽"/> <S k="naked" l="🩲"/>
+            </div>
+          </div>
+          {/* Header row */}
+          <div className="lbg" style={{padding:"9px 16px",borderBottom:"1px solid #1a1a2e"}}>
+            <div/>
+            <div style={{fontSize:11,color:"#555",letterSpacing:2}}>PLAYER</div>
+            <div style={{fontSize:11,color:sort==="winpct"?CA:"#555",textAlign:"center",cursor:"pointer"}} onClick={()=>setSort("winpct")}>W / L</div>
+            <div style={{fontSize:11,color:sort==="winpct"?CA:"#555",textAlign:"center",cursor:"pointer"}} onClick={()=>setSort("winpct")}>WIN %</div>
+            <div style={{fontSize:11,color:sort==="cups"?CA:"#555",textAlign:"center",cursor:"pointer"}} onClick={()=>setSort("cups")}>CUPS</div>
+            <div style={{fontSize:11,color:sort==="cupPct"?CA:"#555",textAlign:"center",cursor:"pointer"}} onClick={()=>setSort("cupPct")}>CUP %</div>
+            <div style={{fontSize:11,color:sort==="puskas"?CA:"#555",textAlign:"center",cursor:"pointer"}} onClick={()=>setSort("puskas")}>⚽ PUSKAS</div>
+            <div style={{fontSize:11,color:sort==="naked"?CA:"#555",textAlign:"right",cursor:"pointer"}} onClick={()=>setSort("naked")}>🩲 NAKED</div>
+          </div>
+          {lb.map((p,i)=>{
+            const medals=["🥇","🥈","🥉"];
+            const r=rate(p.w,p.l);
+            return (
+              <div key={p.pid} className="lbg lbr" style={{opacity:p.gp>0?1:0.3}}>
+                <div style={{fontSize:16}}>{medals[i]||<span style={{color:"#333",fontSize:13}}>{i+1}</span>}</div>
+                <div style={{display:"flex",alignItems:"center",gap:8,minWidth:0}}>
+                  <span style={{color:"#e8e8e8",fontWeight:700,fontSize:15,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.name}</span>
+                  <span style={{fontSize:13}}>{r.emoji}</span>
+                  <span style={{fontSize:10,color:"#2a2a2a"}}>{p.gp}G</span>
+                </div>
+                <div style={{textAlign:"center",fontSize:14,color:"#777",fontWeight:600}}>{p.w}–{p.l}</div>
+                <div style={{textAlign:"center"}}>
+                  {p.winPct!==null?<span style={{fontSize:15,fontWeight:800,color:p.winPct>=60?GOLD:p.winPct>=40?"#ccc":CB}}>{p.winPct}%</span>:<span style={{color:"#2a2a2a"}}>—</span>}
+                </div>
+                <div style={{textAlign:"center",fontSize:15,fontWeight:700,color:"#ddd"}}>
+                  {p.cups>0?p.cups:<span style={{color:"#2a2a2a"}}>—</span>}
+                </div>
+                <div style={{textAlign:"center"}}>
+                  {p.cupPct!==null?<span style={{fontSize:15,fontWeight:700,color:p.cupPct>=50?GOLD:p.cupPct>=30?"#ccc":"#888"}}>{p.cupPct}%</span>:<span style={{color:"#2a2a2a"}}>—</span>}
+                </div>
+                <div style={{textAlign:"center",fontSize:14,fontWeight:700,color:p.puskas>0?GOLD:"#2a2a2a"}}>
+                  {p.puskas>0?`⚽ ${p.puskas}`:"—"}
+                </div>
+                <div style={{textAlign:"right",fontSize:14,fontWeight:700,color:p.naked>0?NAK:"#2a2a2a"}}>
+                  {p.naked>0?`🩲 ${p.naked}`:"—"}
+                </div>
+              </div>
+            );
+          })}
+          {!games.length&&<div style={{textAlign:"center",padding:"28px 0",color:"#222",fontSize:12,letterSpacing:3}}>LOG A GAME TO SEE STATS</div>}
+        </div>
+      )}
+
+      {/* ── LOG GAME ── */}
+      {tab==="log"&&(
+        <div style={{border:"1px solid #1a1a2e",borderRadius:12,padding:20,background:"#0d0d18"}}>
+          <div style={{fontSize:11,letterSpacing:3,color:"#555",marginBottom:4,textTransform:"uppercase"}}>Log Game</div>
+          <div style={{fontSize:10,color:"#333",marginBottom:18,letterSpacing:1}}>CLICK A / B / – TO ASSIGN · WINNER AUTO-DETECTED AT 10 CUPS</div>
+
+          {/* Edit names */}
+          <div style={{marginBottom:16,display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
+            {!editing
+              ?<button className="ibtn" onClick={()=>{setEditN({...players});setEditing(true);}}>✏️ EDIT NAMES</button>
+              :<>{PIDS.map(pid=><input key={pid} value={editN[pid]} onChange={e=>setEditN(n=>({...n,[pid]:e.target.value}))}
+                  style={{background:"#111",border:"1px solid #444",color:"#ccc",padding:"4px 8px",borderRadius:6,fontSize:13,width:100}}/>)}
+                <button className="ibtn" style={{color:CA,borderColor:CA+"55"}} onClick={()=>{setPlayers({...editN});setEditing(false);}}>✓ SAVE</button>
+                <button className="ibtn" onClick={()=>setEditing(false)}>CANCEL</button>
+              </>}
+          </div>
+
+          {/* Team preview */}
+          <div style={{display:"flex",gap:10,marginBottom:16,flexWrap:"wrap",alignItems:"center"}}>
+            {[{s:"A",c:CA,ps:form.teamA},{s:"B",c:CB,ps:form.teamB}].map(({s,c,ps})=>(
+              <div key={s} style={{padding:"9px 16px",borderRadius:8,border:`1px solid ${c}33`,background:`${c}08`,fontSize:13}}>
+                <span style={{color:c,fontWeight:700}}>Team {s}: </span>
+                <span style={{color:"#999"}}>{ps.length?ps.map(p=>players[p]).join(" + "):"—"}</span>
+                {ps.length===2&&<span style={{color:c+"77",marginLeft:8,fontSize:12}}>{ps.reduce((t,p)=>t+(+form.cups[p]||0),0)} cups</span>}
+              </div>
+            ))}
+            {prev10&&<div style={{padding:"9px 16px",borderRadius:8,border:`1px solid ${GOLD}55`,background:`${GOLD}12`,fontSize:13,color:GOLD,fontWeight:700}}>🏆 Team {prev10} wins!</div>}
+          </div>
+
+          {/* Player cards */}
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(175px,1fr))",gap:10,marginBottom:14}}>
+            {PIDS.map(pid=>{
+              const t=tl(pid); const isSit=t.l==="–";
+              return (
+                <div key={pid} style={{padding:"13px 14px",borderRadius:10,border:`1px solid ${t.c}33`,background:`${t.c}07`,opacity:isSit?.4:1,transition:"all .15s"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                    <span style={{color:t.c,fontWeight:700,fontSize:14}}>{players[pid]}</span>
+                    <button onClick={()=>cycle(pid)}
+                      style={{padding:"3px 12px",borderRadius:6,cursor:"pointer",fontWeight:900,fontSize:14,border:`1px solid ${t.c}55`,background:`${t.c}22`,color:t.c,fontFamily:"inherit"}}>
+                      {t.l}
+                    </button>
+                  </div>
+                  {!isSit&&(
+                    <div style={{display:"flex",gap:10,alignItems:"center"}}>
+                      <div>
+                        <div style={{fontSize:10,color:"#555",letterSpacing:1,marginBottom:3}}>CUPS HIT</div>
+                        <input type="number" min="0" max="5" placeholder="0" value={form.cups[pid]}
+                          onChange={e=>setForm(f=>({...f,cups:{...f.cups,[pid]:e.target.value}}))}
+                          style={{background:"#111",border:`1px solid ${t.c}44`,color:t.c,padding:"6px 10px",borderRadius:8,fontSize:15,width:64,textAlign:"center"}}/>
+                      </div>
+                      <div>
+                        <div style={{fontSize:10,color:GOLD,letterSpacing:1,marginBottom:3}}>⚽</div>
+                        <button onClick={()=>setForm(f=>({...f,puskas:{...f.puskas,[pid]:!f.puskas[pid]}}))}
+                          style={{width:42,height:36,borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:13,border:`1px solid ${form.puskas[pid]?GOLD:"#333"}`,background:form.puskas[pid]?`${GOLD}22`:"#111",color:form.puskas[pid]?GOLD:"#444"}}>
+                          {form.puskas[pid]?"✓":"—"}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  {isSit&&<div style={{fontSize:11,color:"#333",letterSpacing:1}}>SITTING OUT</div>}
+                </div>
+              );
+            })}
+          </div>
+
+          <div style={{fontSize:10,color:"#333",marginBottom:14,fontStyle:"italic"}}>🩲 Naked Laps &amp; 🏆 Winner auto-detected from cup totals</div>
+          <button onClick={addGame} style={{background:"linear-gradient(135deg,#00f5ff22,#ff2d7822)",border:"1px solid #333",color:"#fff",padding:"11px 30px",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:14,letterSpacing:1,fontFamily:"inherit"}}>
+            ＋ ADD GAME
+          </button>
+        </div>
+      )}
+
+      {/* ── HISTORY ── */}
+      {tab==="hist"&&(
+        <div style={{border:"1px solid #1a1a2e",borderRadius:12,padding:20,background:"#0d0d18"}}>
+          <div style={{fontSize:11,letterSpacing:3,color:"#555",marginBottom:14,textTransform:"uppercase"}}>Game History</div>
+          {!games.length&&<div style={{textAlign:"center",padding:"24px 0",color:"#222",fontSize:12,letterSpacing:3}}>NO GAMES YET</div>}
+          <div style={{display:"flex",flexDirection:"column",gap:8}}>
+            {games.map((g,i)=>{
+              const wps=g.winner==="A"?g.teamA:g.teamB;
+              const naked=PIDS.filter(p=>g.nakedLap[p]),puskas=PIDS.filter(p=>g.puskas[p]);
+              return (
+                <div key={g.id} style={{padding:"13px 16px",borderRadius:8,background:"#ffffff04",border:"1px solid #1a1a2e"}}>
+                  <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:8}}>
+                    <div style={{fontSize:11,color:"#444",width:26}}>G{i+1}</div>
+                    <div style={{flex:1,fontSize:14,color:GOLD,fontWeight:700}}>🏆 {wps.map(p=>players[p]).join(" & ")}</div>
+                    <button onClick={()=>setGames(g2=>g2.filter(x=>x.id!==g.id))} style={{background:"none",border:"none",color:"#555",cursor:"pointer",fontSize:18}}>×</button>
+                  </div>
+                  <div style={{display:"flex",gap:16,flexWrap:"wrap",fontSize:12,marginBottom:(naked.length>0||puskas.length>0)?6:0}}>
+                    {[{ps:g.teamA,s:"A",c:CA},{ps:g.teamB,s:"B",c:CB}].map(({ps,s,c})=>(
+                      <span key={s}>
+                        <span style={{color:c+"66",fontSize:11}}>T{s}: </span>
+                        {ps.map(p=><span key={p} style={{color:`${c}cc`,marginRight:10}}>{players[p]} {g.cups[p]}🏆</span>)}
+                      </span>
+                    ))}
+                  </div>
+                  {(naked.length>0||puskas.length>0)&&(
+                    <div style={{display:"flex",gap:12,flexWrap:"wrap",marginTop:4}}>
+                      {naked.map(p=><span key={p} style={{fontSize:12,color:NAK}}>🩲 {players[p]}</span>)}
+                      {puskas.map(p=><span key={p} style={{fontSize:12,color:GOLD}}>⚽ {players[p]}</span>)}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          {games.length>0&&<div style={{marginTop:14,paddingTop:12,borderTop:"1px solid #1a1a2e",fontSize:12,color:"#555"}}>GAMES PLAYED: <span style={{color:"#777"}}>{games.length}</span></div>}
+        </div>
+      )}
+
+      {/* ── PLAYLIST ── */}
+      {tab==="music"&&(()=>{
+        const sections=[
+          {label:"Hype / Anthems",songs:[
+            {t:"Levels",a:"Avicii"},{t:"Turn Down for What",a:"DJ Snake & Lil Jon"},{t:"HUMBLE.",a:"Kendrick Lamar"},
+            {t:"Sicko Mode",a:"Travis Scott"},{t:"God's Plan",a:"Drake"},{t:"Started From the Bottom",a:"Drake"},
+          ]},
+          {label:"High Energy Bangers",songs:[
+            {t:"Antidote",a:"Travis Scott"},{t:"Big Rings",a:"Drake & Future"},{t:"Power",a:"Kanye West"},
+            {t:"FRANCHISE",a:"Travis Scott"},{t:"Jumpman",a:"Drake & Future"},{t:"fck it up",a:"A$AP Rocky"},
+          ]},
+          {label:"Crowd Pleasers",songs:[
+            {t:"Mr. Brightside",a:"The Killers"},{t:"Bohemian Rhapsody",a:"Queen"},{t:"Don't Stop Me Now",a:"Queen"},
+            {t:"Sweet Caroline",a:"Neil Diamond"},{t:"Livin' on a Prayer",a:"Bon Jovi"},{t:"All Star",a:"Smash Mouth"},
+          ]},
+          {label:"Recent Hits",songs:[
+            {t:"fukumean",a:"Gunna"},{t:"Rich Flex",a:"Drake & 21 Savage"},{t:"Superhero",a:"Metro Boomin"},
+            {t:"Scientists & Engineers",a:"Gunna"},{t:"Spin Bout U",a:"Drake & 21 Savage"},
+          ]},
+          {label:"Late Night Vibes",songs:[
+            {t:"Night Owl",a:"Galimatias"},{t:"Nights",a:"Frank Ocean"},{t:"Crew",a:"GoldLink"},
+          ]},
+        ];
+        return (
+          <div style={{border:"1px solid #1a1a2e",borderRadius:12,padding:20,background:"#0d0d18"}}>
+            <div style={{fontSize:11,letterSpacing:3,color:"#555",marginBottom:4,textTransform:"uppercase"}}>🎵 Flong Playlist</div>
+            <div style={{fontSize:10,color:"#333",marginBottom:20,letterSpacing:1}}>HIGH ENERGY · CATCHY · MOTIVATING</div>
+            <div style={{display:"flex",flexDirection:"column",gap:20}}>
+              {sections.map(sec=>(
+                <div key={sec.label}>
+                  <div style={{fontSize:10,color:CA,letterSpacing:3,textTransform:"uppercase",marginBottom:10,paddingBottom:6,borderBottom:"1px solid #1a1a2e"}}>{sec.label}</div>
+                  <div style={{display:"flex",flexDirection:"column",gap:1}}>
+                    {sec.songs.map((s,i)=>(
+                      <div key={i} style={{display:"flex",alignItems:"center",gap:12,padding:"9px 10px",borderRadius:7,transition:"background .1s",cursor:"default"}}
+                        onMouseEnter={e=>e.currentTarget.style.background="#ffffff06"}
+                        onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                        <div style={{fontSize:11,color:"#2a2a2a",width:20,textAlign:"right"}}>{i+1}</div>
+                        <div style={{flex:1}}>
+                          <div style={{fontSize:14,fontWeight:700,color:"#e0e0e0"}}>{s.t}</div>
+                          <div style={{fontSize:11,color:"#555",marginTop:1}}>{s.a}</div>
+                        </div>
+                        <a href={`https://open.spotify.com/search/${encodeURIComponent(s.t+" "+s.a)}`} target="_blank" rel="noreferrer"
+                          style={{fontSize:10,color:"#1db954",border:"1px solid #1db95444",padding:"4px 10px",borderRadius:6,textDecoration:"none",letterSpacing:1,flexShrink:0}}>
+                          SPOTIFY
+                        </a>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+
+      {toast&&<div className="toast">{toast}</div>}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>

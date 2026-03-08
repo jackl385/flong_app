@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e \":*)",
+      "Bash(gh auth status)",
+      "Bash(git --version)",
+      "Bash(git config --global user.name)",
+      "Bash(git config --global user.email)",
+      "Bash(git init)",
+      "Bash(git remote add origin https://github.com/jackl385/flong_app.git)",
+      "Bash(git add flong-dashboard.html CLAUDE.md README.md data/ history/ .claude/)",
+      "Bash(git commit:*)"
+    ]
+  }
+}
