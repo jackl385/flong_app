@@ -161,15 +161,19 @@ const UNDER_COL="#f0a500"  // Under = amber
 
 ## Repo structure
 ```
-d401-flong/
+flong_app/
 ├── flong-dashboard.html   ← entire app
 ├── CLAUDE.md              ← this file
-└── data/                  ← drop auto-exported JSONs here for version history
-    └── flong-g6-2026-03-08.json
+├── README.md              ← player & developer docs
+├── data/
+│   └── flong-latest.json  ← canonical latest game data (fetched on load)
+└── history/
+    ├── html/              ← old dashboard iterations
+    └── json/              ← old data snapshots & backups
 ```
 
 ## GitHub Pages
-Served at: `https://YOUR_USERNAME.github.io/d401-flong/flong-dashboard.html`
+Served at: `https://jackl385.github.io/flong_app/flong-dashboard.html`
 Settings → Pages → Deploy from branch → main / root.
 
 ## Workflow for future changes

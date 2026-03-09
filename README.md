@@ -80,15 +80,15 @@ Icons: **fire** = hot streak (2+ wins in last 3, stats trending up 15%+), **crow
 ### Project Structure
 
 ```
-flong_dashboard/
+flong_app/
 ├── flong-dashboard.html    <- entire app (single file)
 ├── CLAUDE.md               <- detailed dev context doc
 ├── README.md               <- this file
 ├── data/
 │   └── flong-latest.json   <- canonical latest game data (fetched on load)
 └── history/
-    ├── html/               <- old dashboard iterations (46 versions)
-    └── json/               <- old data snapshots (23 exports)
+    ├── html/               <- old dashboard iterations
+    └── json/               <- old data snapshots & backups
 ```
 
 ### Tech Stack
