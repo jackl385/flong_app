@@ -14,7 +14,14 @@
       "Bash(git push -u origin main)",
       "Bash(ssh -T git@github.com)",
       "Bash(brew install gh)",
-      "Bash(gh auth login --hostname github.com --web --git-protocol https)"
+      "Bash(gh auth login --hostname github.com --web --git-protocol https)",
+      "Bash(gh auth login --web -p https)",
+      "Bash(gh auth setup-git)",
+      "Bash(git add README.md)",
+      "Bash(git push)",
+      "Bash(git pull --rebase origin main)",
+      "Bash(git stash)",
+      "Bash(git stash pop)"
     ]
   }
 }
