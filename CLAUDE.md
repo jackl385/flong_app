@@ -1,7 +1,7 @@
 # D401 Flong Scoreboard — Claude Code Context
 
 ## What this is
-A single-file HTML dashboard for tracking a drinking game called **D401 Flong** played by 6 friends at MIT (David, Jack, Jordan, Karthik, Richard, Yishak). No build step, no server — open `flong-dashboard.html` directly in a browser.
+A single-file HTML dashboard for tracking a drinking game called **D401 Flong**.
 
 ## Tech stack
 - Single file: `flong-dashboard.html`
